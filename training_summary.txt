@@ -1,0 +1,4 @@
+best_val_acc: 0.9197
+total_samples: 682
+train_samples: 545
+val_samples: 137

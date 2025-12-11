@@ -16,6 +16,7 @@ mlflow.db
 
 # Temporary folders
 temp_train/
+output/
 
 # Mac OS
 .DS_Store

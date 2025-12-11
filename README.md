@@ -1,179 +1,103 @@
-## 📘 CAPTCHA Image Classification with EfficientNet-B0
-EfficientNet-B0 기반으로 동물(Animal) / 사물(Object) 이미지 분류를 수행하는 프로젝트이다.
-ImageNet 일부를 활용해 데이터를 재구성하였으며, PyTorch, MLflow, EfficientNet을 활용해 모델 학습–평가–추론–시각화(t-SNE) 파이프라인을 구축했다.
+## 🚀 CAPTCHA AI Workspace
+
+이 레포지토리는 CAPTCHA 서비스 개발을 위한 AI 모델링·실험 환경을 정리한 개인 작업 공간입니다.
+
+현재 구조는 아래와 같이 구성되어 있으며,
+
+- ai/ → 팀 프로젝트에 실제로 들어갈 최종 코드
+- ai_old/ → 개인 로컬 환경에서 개발·실험했던 코드 백업
+
+두 영역을 명확하게 분리하여 관리합니다.
 
 ---
 
-## 📂 Project Structure
+## 📂 Directory Structure
 ```
-captcha/
-├─ images/                 # 학습 이미지 (세부 클래스별 폴더)
-├─ class_check.py          # 데이터셋 구조 점검 스크립트
-├─ captcha_dataset.py      # 커스텀 Dataset (세부 클래스 → 대그룹 매핑)
-├─ train.py                # EfficientNet-B0 학습 + MLflow 추적
-├─ inference.py            # 학습된 모델로 단일 이미지 분류(Inference) + 선택적 임베딩 추출(t-SNE용)
-├─ tsne_test.py            # ResNet50 기반 간단 t-SNE 테스트용
-├─ tsne_visualization.py   # 학습된 EfficientNet 기반 t-SNE 시각화
-├─ name_changer.py         # 이미지 파일명 일괄 변경 스크립트
-└─ best_model.pth          # 학습된 모델 가중치(학습 후 생성)
+CAPTCHA/
+├── ai/                           # 팀 프로젝트용 최종 AI 코드
+│   ├── images/                   # 2단계 구조의 학습용 이미지 데이터
+│   ├── inference/                # 이미지 분류 추론 코드 (production-ready)
+│   │   ├── image_classifier.py
+│   │   └── README.md  
+│   ├── models/                   # 학습된 best_model.pth 저장 위치
+│   └── training/                 # EfficientNet 학습 파이프라인
+│       ├── train_efficient.py
+│       ├── captcha_dataset.py
+│       ├── name_changer.py
+│       └── README.md
+│
+├── ai_old/                       # 개인 실험 버전(실험 코드, 테스트, T-SNE 등)
+│   ├── images/
+│   ├── inference.py
+│   ├── train.py
+│   ├── mlflow.db
+│   ├── tsne_test.py
+│   ├── tsne_visualization.py
+│   ├── training_summary.txt
+│   └── model_compare/
+│
+├── output/                # 기타 출력 폴더
+├── venv/                  # Python 가상환경 (업로드 제외)
+├── .gitignore
+├── README.md
+└── requirements.txt
 ```
 ---
 
-### 1. Dataset Overview
-학습 데이터는 ImageNet 기반 특정 카테고리를 추출해 다음과 같이 구성됨
+## 🧠 What’s Inside?
+### 1. ai/ — 최종 작업물
+팀 GitHub에 업로드될 AI 코드들이 정리되어 있으며, 실제 CAPTCHA 서비스에 들어갈 구조입니다.
+- 포함 기능
+  - EfficientNet-B0 이미지 분류 학습 (`training/train_efficient.py`)
+  - Dataset 자동 매핑 (`captcha_dataset.py`)
+  - 파일명 정규화 유틸리티(`name_changer.py`)
+  - 이미지 분류 추론 코드(`inference/image_classifier.py`)
+  - NUM_CLASSES 자동 계산
+  - MLflow 기반 학습 이력 관리
+  - 학습된 `best_model.pth` 보관
+
+### 2. ai_old/ — 개인 실험 코드 보관소
+학습 과정에서 테스트했던 코드들을 그대로 보존한 폴더입니다.
+- 포함 기능
+  - 초기 버전의 `train.py`, `inference.py`
+  - T-SNE 시각화
+  - class check / naming script 실험 버전
+  - MLflow DB 파일
+  - 모델 비교 결과 등 실험 로그
+이 폴더는 레거시 참고용이며 팀 프로젝트에서는 사용되지 않습니다.
+
+## 📝 Usage Summary
+### 1. 이미지 파일명 정규화
+```bash
+python ai/training/name_changer.py --data_dir ./ai/images
 ```
-images/
-├─ cheetah/
-├─ chimpanzee/
-├─ dog/
-├─ gorilla/
-├─ hartebeest/
-├─ ...
-├─ clock/
-├─ drawers/
-├─ flight/
-└─ gloves/
+### 2. 이미지 분류 모델 학습
+```bash
+cd ai
+
+python training/train_efficient.py \
+    --data_dir ./images \
+    --output_dir ./models
 ```
-- 세부 클래스 → 대그룹 매핑 방식 사용
-- 프로젝트는 “목적에 맞게 단순화된 2-Class CAPTCHA 모델”을 사용하며, 이 매핑 로직은 captcha_dataset.py 내부에 존재 
+### 3. 단일 이미지 분류 / 랜덤 추론
+```bash
+cd ai
 
-| 세부 클래스                 | 대그룹    |
-| ------------------------ | ------ |
-| cheetah, dog, monkey 등   | animal |
-| clock, gloves, toaster 등 | object |
-
-
-### 2. Model Overview
-- Base Model
-  - EfficientNet-B0 (ImageNet Pretrained)
-  - classifier 마지막 레이어만 수정 → 2-class 출력 (후에 변경 가능)
-- Loss / Optimizer / Scheduler
-  - CrossEntropyLoss
-  - Adam (lr=0.0003)
-  - StepLR(step_size=2, gamma=0.9)
-- Early Stopping
-  - 검증 정확도(val_acc)가 상승하지 않는 epoch가 patience(=3) 이상이면 자동 종료
-  - 과적합(gap) 여부는 참고용 메시지 출력만 하고, 모델 저장 조건에는 관여하지 않음
-
-
-
-  ### 3. Training (train.py)
-
-- 주요 기능
-  - Dataset 1회 생성 → random_split → transform 분리 적용
-  - EfficientNet-B0 pretrained 모델 사용
-  - MLflow 실험 기록
-  - Model Signature 자동 기록 (infer_signature)
-  - Best Model 자동 저장(best_model.pth)
-  - Early Stopping (patience=3)
-  - 최종 검증 정확도 표시
-
-
-
-### 4. Inference (inference.py)
-학습이 끝난 EfficientNet-B0 모델을 이용해 실제 이미지가 제대로 분류되는지 검증하는 추론 코드이다.
-  - 단일 이미지 분류(Classification inference)
-  - 모델 특징 벡터(embedding) 추출
-  - 전체 데이터셋에 대해 t-SNE 시각화 수행
-
-
-
-### 5. Visualization (TSNE)
-프로젝트는 두 종류의 t-SNE 코드 제공한다.
-
-#### 5.1 tsne_test.py — ResNet50 기반 간단 버전
-- 특징
-  - ImageNet pretrained ResNet50 사용
-  - 마지막 FC 제거하여 2048차원 임베딩 추출
-  - images/ 폴더에 있는 파일 단일 레벨 기준
-  - 파일명 앞 prefix로 라벨 처리 (ex) dog_01 → dog)
-- 사용 목적
-  - “데이터 자체가 어떻게 분포되어 있는가?” 빠르게 체크 가능
-  - 모델 학습 없이도 t-SNE 가능
-
-#### 5.2 tsne_visualization.py — EfficientNet 실제 학습 기반 버전
-- 특징
-  - 학습된 best_model.pth 기반으로 임베딩 1280차원 추출
-  - CLASS_MAPPING 기반 animal/object 라벨 지정
-  - 산점도 시각화
-  - legend 포함 (Animal=red, Object=blue)
-  - 최종 그래프를 tsne_visualization.png로 저장
-
-
-
-### 6. Utility Scripts
-#### 6.1 name_changer.py
-각 폴더 내 이미지 파일을 규칙적인 형식으로 재정렬하는 역할을 하며, 이를 통해 파일명을 정규화시키고, 시각화/분석 시 파일명 일관성 유지할 수 있다. 
-#### 6.2 class_check.py
-Dataset을 ImageFolder처럼 인식시키기 전에 구조가 잘 구성되었는지 빠르게 검증할 수 있는 스크립트로, 총 이미지 수, 클래스 목록, 첫 10개 라벨을 출력한다.
-
-
-
-### 7. Custom Dataset (captcha_dataset.py)
-- 기능 요약
-  - 폴더명(dog, gloves 등) → 대그룹(animal/object) 자동 매핑
-  - 이미지 경로 리스트 구성
-  - transform 적용
-  - DataLoader로 학습/검증 분리 가능
-- 사용 이유
-  - 기본 ImageFolder는 “폴더 = 클래스”
-  - → 본 프로젝트는 여러 세부 클래스를 하나의 그룹으로 합쳐 학습 필요 → 따라서 커스텀 Dataset 필수
-
-
-
-### 8. Setup & Environment
-- 추천 버전
-  - Python 3.11
-  - PyTorch 2.x
-  - macOS: device="mps" 자동 지원
-  - MLflow 필수
-- 설치 
+python inference/image_classifier.py \
+    --data_dir ./images \
+    --model_path ./models/best_model.pth
 ```
-python3.11 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-- 필요 라이브러리
-```
-torch
-torchvision
-mlflow
-numpy
-pillow
-matplotlib
-scikit-learn
+### 4. mlflow 실행 
+```bash
+cd ai
+
+mlflow ui --port 5000
 ```
 
-
-### 9. How to Train → Evaluate → Visualize
-#### (1) 데이터 정리 
-```
-images/
-   ├─ dog/
-   ├─ cheetah/
-   ├─ gloves/
-   ├─ toaster/
-   ...
-```
-#### (2) 이름 정리 (Optional)
-```
-python name_changer.py
-```
-#### (3) 학습 실행
-```
-python train.py
-```
-train.py 완료 후:
-- best_model.pth 생성
-- MLflow에서 그래프 확인 가능
-#### (4) t-SNE 시각화 (학습 기반)
-```
-python tsne_visualization.py
-```
-#### (5) 모델 추론
-```
-python inference.py
-```
+### 📌 Notes
+- ai/ 폴더가 팀 프로젝트에 실제로 포함되는 코드입니다.
+- ai_old/는 개인 테스트 및 연구용이므로 팀 레포에는 포함되지 않습니다.
+- .gitignore에 venv, mlruns, 캐시 파일이 설정되어 있습니다.
 
 ---
 

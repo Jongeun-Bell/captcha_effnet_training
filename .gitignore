@@ -9,7 +9,8 @@ venv/
 mlruns/
 mlflow.db
 
-# Model weights (optional 제외 가능)
+# Model weights (choose one)
+# If you want to ignore trained models:
 *.pth
 *.pt
 *.onnx

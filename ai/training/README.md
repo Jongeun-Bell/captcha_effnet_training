@@ -12,24 +12,15 @@
 
 ---
 
-# ✂️ Ticket Slice (행동 기반 검증 AI)
-
-## 🌳 Isolation Forest
-→ 추가 예정
-
-# 🖱️ Drag & Drop (인지 기반 검증 AI)
-
-## 🏕️ Random Forest
-→ 추가 예정
-
-## 🎆 EfficientNet-B0 AI 
-### 📂 Directory Structure
+# 📂 Directory Structure
 ```
 ai/
  ├── training/
  │     ├── train_efficientnet.py     # 이미지 분류 학습 메인 스크립트
  │     ├── captcha_dataset.py        # 2단계 구조 Dataset 자동 라벨링
  │     ├── name_changer.py           # 이미지 파일명 정규화 스크립트
+ │     ├── islocation_forest_ai.py.  # 추후 추가 예정 
+ │     ├── random_forest_ai.py.      # 추후 추가 예정
  │     └── README.md
  │
  └── inference/
@@ -38,36 +29,58 @@ ai/
 
 ```
 
+# ✂️ Ticket Slice (행동 기반 검증 AI)
+## 🌳 Isolation Forest
+→ 추가 예정
+
+# 🖱️ Drag & Drop (인지 기반 검증 AI)
+## 🏕️ Random Forest
+→ 추가 예정
+
+## 🎆 EfficientNet-B0 AI 
 ### 💿 Data Structure 
-학습 데이터는 반드시 아래와 같은 2단계 폴더 구조여야 합니다.
+학습 데이터는 반드시 아래와 같은 2단계 폴더 구조를 따라야 합니다.
 ```
 images/
  ├── animal/
- │      ├── cheetah/
- │      ├── dog/
- │      └── ...
- └── object/
-        ├── toaster/
-        ├── gloves/
-        └── ...
+ │     ├── cheetah/
+ │     ├── dog/
+ │     └── ...
+ ├── object/
+ │     ├── toaster/
+ │     ├── gloves/
+ │     └── ...
 ```
 - Layer 1: 대그룹 (예: animal, object)
 - Layer 2: 세부 클래스 폴더 (예: cheetah / toaster 등)
-- 이미지 파일(.jpg/.png)은 2단계 폴더 안에 위치
+- 실제 이미지 파일(.jpg/.png)은 2단계 폴더 안에 위치
+📍 대그룹 기준으로 label이 자동 생성되며, 클래스 수(NUM_CLASSES)는 학습 시 자동 계산됩니다.
 
 ---
 
 ### 🚀 Training Workflow
 
 #### 0. 실행 전 위치 설정 
-AI 학습 스크립트는 반드시 다음 디렉토리에서 실행해야 합니다:
+AI 학습 스크립트는 반드시 아래 경로에서 실행해야 합니다.
 ```bash
-cd /Users/bell/Desktop/captcha/ai/training/
+cd /home/ubuntu/captcha-service/ai
 ```
-이 위치에서만 `./images`, `./models`, `training/`, `inference/` 등의 상대 경로가 정상적으로 연결됩니다.
+이 위치를 기준으로 `./images`, `./models`, `training/`, `inference/` 등의 상대 경로가 정상적으로 동작합니다.
 
+#### 1. MLflow Tracking Server 실행
+⚠️ 학습을 시작하기 전에 반드시 MLflow 서버를 먼저 실행해야 합니다.
+MLflow 서버가 실행되지 않으면 학습 중 Tracking 단계에서 오류가 발생합니다.
+✅ MLflow 서버 실행 명령어
+```bash
+mlflow server \
+  --backend-store-uri ./mlruns \
+  --default-artifact-root ./mlruns \
+  --host 0.0.0.0 \
+  --port 5000
+```
+- MLflow Dashboard 접속 주소: `http://<SERVER_IP>:5000`
 
-#### 1. 파일명 정규화 – name_changer.py
+#### 2. 파일명 정규화 – name_changer.py
 다양한 원본 이미지 이름을 다음처럼 규칙적으로 정리합니다.
 ```
 e.g. 
@@ -80,10 +93,10 @@ toaster_2.jpg
 ```
 ✅ 실행 명령어
 ```bash
-python name_changer.py --data_dir ./images
+python training/name_changer.py --data_dir ./images
 ```
 
-#### 2. Dataset 자동 라벨링 — captcha_dataset.py
+#### 3. Dataset 자동 라벨링 — captcha_dataset.py
 대그룹 폴더명 기준으로 label 자동 생성합니다. 
 ```
 e.g.
@@ -94,74 +107,54 @@ e.g.
 - 클래스별 이미지 개수 출력
 - NUM_CLASSES 자동 계산 → 모델에 직접 반영됨
 
-#### 3. EfficientNet 학습 — train_efficientnet.py
+#### 4. EfficientNet 학습 — train_efficientnet.py
 
-#### 3.1 기본(default) 파라미터 실행
+#### 4.1 기본(default) 파라미터 실행
 ✅ 실행 명령어
 ```bash
-python train_efficientnet.py \
-    --data_dir ../images \
-    --output_dir ../models
+python training/train_efficientnet.py \
+  --data_dir ./images \
+  --output_dir ./models
 ```
 → batch_size, learning_rate, epochs 등은 스크립트 내부 default 사용
 
-#### 3.2 하이퍼파라미터 직접 지정 실행
+#### 4.2 하이퍼파라미터 직접 지정 실행
 ✅ 실행 명령어 
 ```bash
-python train_efficientnet.py \
-    --data_dir ./images \
-    --output_dir ./models \
-    --batch_size 32 \
-    --learning_rate 0.0001 \
-    --epochs 30 \
-    --patience 5
+python training/train_efficientnet.py \
+  --data_dir ./images \
+  --output_dir ./models \
+  --batch_size 32 \
+  --learning_rate 0.0003 \
+  --epochs 30 \
+  --patience 5
 ```
 
 #### 4. Output
-학습이 끝나면 `best_model.pth(ai/models/best_model.pth)`가 저장됩니다.
-→ 이 모델은 Inference 서버(`ai/inference/`)에서 자동으로 로드됩니다.
+학습 완료 시 아래 파일이 생성됩니다.
+```
+ai/models/best_model.pth
+```
+- Validation Accuracy 기준 최고 성능 모델
+- Early Stopping 적용
+- Inference 서버(ai/inference/)에서 해당 모델을 로드하여 사용
 
 ---
 
 ### 📊 MLflow Tracking
-본 학습 스크립트는 MLflow로 다음을 자동 기록합니다:
-- 학습 파라미터(batch, lr, epochs, patience 등)
-- train/val accuracy & loss
-- best model 기록
-- 모델 Signature 저장
-
-✅ 실행 명령어 
-```bash
-mlflow ui --port 5000
-```
-
-`train_efficientnet.py`는 기본적으로 로컬 MLflow Tracking 서버를 사용하도록 설정되어 있습니다. 
-```python
-mlflow.set_tracking_uri("file:./mlruns")
-```
-⚠️ 하지만 **서버 환경에서는 반드시 MLflow Tracking Server 주소로 변경해야 합니다.**
-
-실제 배포 환경에서 MLflow Dashboard를 웹으로 보려면, Tracking URI를 HTTP 주소로 변경해야 합니다. 
-```python
-mlflow.set_tracking_uri("http://<MLFLOW_SERVER_IP>:5000")
-```
-
-#### 1. 서버가 Public IP를 가진 경우
-```
-http://123.45.67.89:5000
-```
-#### 2. 서버가 Private IP만 있는 경우 (예: 10.x.x.x)
-```
-ssh -L 5000:localhost:5000 ubuntu@<BASTION_PUBLIC_IP>
-```
-→ 서버가 <Private IP>만 가지고 있다면 Bastion 포트포워딩을 사용해 접속 가능하며, 로컬 브라우저(`http://localhost:5000`)에서 접근할 수 있습니다.  
+학습 과정에서 MLflow로 다음 항목들이 자동 기록됩니다.
+- Hyper Parameters (batch_size, learning_rate, epochs, patience)
+- Train / Validation Loss
+- Train / Validation Accuracy
+- Learning Rate 변화
+- Best Model Artifact
+- Model Signature (Inference용)
 
 ---
 
 ### 🎯 Summary
-
-- 모델 학습은 NUM_CLASSES 자동 추론으로 클래스 변경에 유연함  
-- MLflow Tracking URI는 서버 환경에서 꼭 `<서버 IP>:5000`로 수정해야 함  
-- Dataset 매핑 로직은 `captcha_dataset.py`에서 자동 처리  
-- `train_efficientnet.py`는 EfficientNet 학습 + MLflow 기록을 수행하는 메인 스크립트  
-
+- EfficientNet-B0 기반 이미지 CAPTCHA 분류 모델
+- Dataset 구조 변경 시에도 NUM_CLASSES 자동 대응
+- MLflow Tracking Server 사전 실행 필수
+- train_efficientnet.py는 학습 + 기록을 담당하는 메인 스크립트
+- best_model.pth는 API / Inference 서버에서 직접 사용 가능

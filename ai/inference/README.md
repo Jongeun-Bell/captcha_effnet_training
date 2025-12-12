@@ -31,7 +31,7 @@ EfficientNet inference 스크립트는 이미지 기반 CAPTCHA의 분류 모델
 #### 3.1 실행 방법
 AI 추론 스크립트는 반드시 다음 디렉토리에서 실행해야 합니다:
 ```
-cd ~/Desktop/captcha/ai
+cd /home/ubuntu/captcha-service/ai
 ```
 이 위치에서만 `./images`, `./models`, `training/`, `inference/` 등의 상대 경로가 정상적으로 연결됩니다.
 
